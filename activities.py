@@ -436,13 +436,13 @@ async def find_or_create_summaries_doc(account_name: str) -> str:
 Folders in letter '{letter}':
 {folder_list}
 
-IMPORTANT: Match is case-INSENSITIVE. "example" matches "Example", "acme" matches "ACME", etc.
+IMPORTANT matching rules (in priority order):
+1. EXACT match (case-insensitive, preserve punctuation): "Example Co." matches "Example Co.", "example co."
+2. Case-insensitive match: "example" matches "Example", "EXAMPLE"
+3. Variations: "example corp" matches "Example.io", "examplecorp", "Example Corp"
+4. Handle dots, spaces, punctuation differences
 
-Also match these variations:
-- "acme corp" matches "Acme.io", "acmecorp", "Acme Corp"
-- Handle dots, spaces, punctuation differences
-
-Return ONLY the number (1, 2, 3, etc.) or "NONE" if no match exists.
+Return ONLY the folder number (1, 2, 3, etc.) or "NONE" if no match exists.
 
 Your response (number only):"""
 
@@ -451,11 +451,12 @@ Your response (number only):"""
 
         response = claude_client.messages.create(
             model=model,
-            max_tokens=10,
+            max_tokens=20,  # Increased to handle 3-digit folder numbers
             messages=[{"role": "user", "content": prompt}]
         )
 
         choice_text = response.content[0].text.strip().upper()
+        activity.logger.info(f"LLM folder matching response: '{choice_text}'\n")
 
         if choice_text == "NONE":
             # No matching folder found - create it with capitalized first letter
